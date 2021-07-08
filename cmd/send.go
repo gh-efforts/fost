@@ -14,12 +14,13 @@ import (
 	lotusTypes "github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"golang.org/x/xerrors"
+	"strings"
 )
 
-func (cmd *command) initSend () {
+func (cmd *command) initSend() {
 	walletCommand := &grumble.Command{
 		Name:     "send",
-		Help:     "Send funds between accounts",
+		Help:     "Send funds between accounts (Just sign the transaction, not really send)",
 		LongHelp: "[targetAddress] [amount]",
 		Args: func(a *grumble.Args) {
 			a.String("targetAddress", "specify targetAddress to send")
@@ -57,16 +58,16 @@ func (cmd *command) initSend () {
 					return err
 				}
 				params.From = addr
-			}else {
+			} else {
 				addrs, err := cmd.wallet.WalletList(ctx)
 				if err != nil {
 					return err
 				}
 				if len(addrs) == 0 {
 					return fmt.Errorf("wallet is empty")
-				}else if len(addrs) == 1 {
+				} else if len(addrs) == 1 {
 					params.From = addrs[0]
-				}else {
+				} else {
 					key := ""
 					prompt := &survey.Select{
 						Message: "Send from?:",
@@ -110,18 +111,42 @@ func (cmd *command) initSend () {
 				params.Nonce = &n
 			}
 
-			msg := buildMsg(params)
-
-			c.App.Println("sign message:")
+			if c.Flags.String("params-json") != "" {
+				if cmd.apiGetter != nil {
+					decParams, err := cmd.DecodeTypedParamsFromJSON(ctx, params.To, params.Method, c.Flags.String("params-json"))
+					if err != nil {
+						return fmt.Errorf("failed to decode json params: %w", err)
+					}
+					params.Params = decParams
+				} else {
+					c.App.Println("Params: No chain node connection, can't decode params")
+				}
+			}
+			if c.Flags.String("params-hex") != "" {
+				decParams, err := hex.DecodeString(c.Flags.String("params-hex"))
+				if err != nil {
+					return fmt.Errorf("failed to decode hex params: %w", err)
+				}
+				params.Params = decParams
+			}
+			msg, err := cmd.buildMsg(ctx, params)
+			if err != nil {
+				return err
+			}
+			cmd.Info("message details:")
 
 			v, err := json.MarshalIndent(msg, "", "    ")
 			if err != nil {
 				return err
 			}
-			c.App.Println(string(v))
+			cmd.Info(string(v))
+
+			if msg.GasFeeCap.IsZero() || msg.GasPremium.IsZero() || msg.GasLimit == 0 || msg.Nonce == 0 {
+				cmd.Warning("In offline mode, you must manually set gas-premium, gas-feecap, gas-limit, nonce !!!")
+			}
 			var confirm bool
 			prompt := &survey.Confirm{
-				Message: "confirm ?:",
+				Message: "confirm signature ?:",
 			}
 			if err := survey.AskOne(prompt, &confirm, nil); err != nil {
 				return err
@@ -132,11 +157,27 @@ func (cmd *command) initSend () {
 				if err != nil {
 					return err
 				}
-				smg, err := sm.Serialize()
+
+				sigBytes := append([]byte{byte(sm.Signature.Type)}, sm.Signature.Data...)
+				cmd.Info(hex.EncodeToString(sigBytes))
+
+				smg, err := sm.MarshalJSON()
 				if err != nil {
 					return fmt.Errorf("error serializing message: %w", err)
 				}
-				c.App.Println(hex.EncodeToString(smg))
+
+				cmd.Info("Push to Network: ")
+				curlData := `
+=================================================================================================
+curl -X POST \
+-H "Content-Type: application/json" \
+--data '{ "jsonrpc": "2.0", "method": "Filecoin.MpoolPush", "params": [$paramsData], "id": 1 }' \
+'$rpcAddr'
+=================================================================================================
+`
+				curlData = strings.Replace(curlData, "$paramsData", string(smg), 1)
+				curlData = strings.Replace(curlData, "$rpcAddr", cmd.config.Rpc, 1)
+				cmd.Info(curlData)
 			}
 			return nil
 		},
@@ -145,9 +186,9 @@ func (cmd *command) initSend () {
 }
 
 type SendParams struct {
-	To   address.Address
-	From address.Address
-	Value  abi.TokenAmount
+	To    address.Address
+	From  address.Address
+	Value abi.TokenAmount
 
 	GasPremium *abi.TokenAmount
 	GasFeeCap  *abi.TokenAmount
@@ -158,11 +199,11 @@ type SendParams struct {
 	Params []byte
 }
 
-func buildMsg(params SendParams) *lotusTypes.Message {
-	msg := lotusTypes.Message{
-		From:  params.From,
-		To:    params.To,
-		Value: params.Value,
+func (cmd *command) buildMsg(ctx context.Context, params SendParams) (*lotusTypes.Message, error) {
+	msg := &lotusTypes.Message{
+		From:   params.From,
+		To:     params.To,
+		Value:  params.Value,
 		Method: params.Method,
 		Params: params.Params,
 	}
@@ -185,7 +226,29 @@ func buildMsg(params SendParams) *lotusTypes.Message {
 	if params.Nonce != nil {
 		msg.Nonce = *params.Nonce
 	}
-	return &msg
+
+	if cmd.apiGetter != nil {
+		oApi, closer, err := cmd.apiGetter()
+		if err != nil {
+			return nil, err
+		}
+		defer closer()
+
+		msg, err = oApi.GasEstimateMessageGas(ctx, msg, nil, lotusTypes.EmptyTSK)
+		if err != nil {
+			return nil, xerrors.Errorf("GasEstimateMessageGas error: %w", err)
+		}
+		msg.Nonce, err = oApi.MpoolGetNonce(ctx, msg.From)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if params.Nonce != nil {
+		msg.Nonce = *params.Nonce
+	}
+
+	return msg, nil
 }
 
 func (cmd *command) signMsg(ctx context.Context, msg *lotusTypes.Message) (*lotusTypes.SignedMessage, error) {

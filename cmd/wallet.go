@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/desertbit/grumble"
 	"github.com/filecoin-project/go-address"
@@ -11,7 +12,7 @@ import (
 	"strings"
 )
 
-func (cmd *command) initWallet () {
+func (cmd *command) initWallet() {
 	walletCommand := &grumble.Command{
 		Name:     "wallet",
 		Help:     "wallet tools",
@@ -24,10 +25,10 @@ func (cmd *command) initWallet () {
 	cmd.addWalletImport(walletCommand)
 }
 
-func (cmd *command) addWalletList(parent *grumble.Command)  {
+func (cmd *command) addWalletList(parent *grumble.Command) {
 	s := &grumble.Command{
 		Name: "list",
-		Help: "list wallet",
+		Help: "list keys",
 		Run: func(c *grumble.Context) error {
 			ctx, cancel := c.App.Context()
 			defer cancel()
@@ -36,17 +37,18 @@ func (cmd *command) addWalletList(parent *grumble.Command)  {
 				return err
 			}
 			for _, addr := range addrs {
-				c.App.Println(addr.String())
+				cmd.Println(addr.String())
 			}
 			return nil
 		},
 	}
 	parent.AddCommand(s)
 }
-func (cmd *command) addWalletNew(parent *grumble.Command)  {
+
+func (cmd *command) addWalletNew(parent *grumble.Command) {
 	s := &grumble.Command{
 		Name: "new",
-		Help: "create new wallet",
+		Help: "create new key",
 		Run: func(c *grumble.Context) error {
 			ctx, cancel := c.App.Context()
 			defer cancel()
@@ -66,18 +68,21 @@ func (cmd *command) addWalletNew(parent *grumble.Command)  {
 			if err != nil {
 				return err
 			}
-			c.App.Println(addr.String())
+			cmd.Info(addr.String())
+			cmd.Warning(fmt.Sprintf("Before exiting %s, back up (export) your wallet, otherwise ALL DATA will be lost!!!", c.App.Config().Name))
 			return nil
 		},
 	}
 	parent.AddCommand(s)
 }
 
-
-func (cmd *command) addWalletExport(parent *grumble.Command)  {
+func (cmd *command) addWalletExport(parent *grumble.Command) {
 	s := &grumble.Command{
 		Name: "export",
 		Help: "export keys",
+		Flags: func(f *grumble.Flags) {
+			f.String("p", "path", "", "export private key to file path")
+		},
 		Run: func(c *grumble.Context) error {
 			ctx, cancel := c.App.Context()
 			defer cancel()
@@ -113,18 +118,26 @@ func (cmd *command) addWalletExport(parent *grumble.Command)  {
 				return err
 			}
 
-			c.App.Println(hex.EncodeToString(b))
+			if c.Flags.String("path") != "" {
+				err := ioutil.WriteFile(c.Flags.String("path"), []byte(hex.EncodeToString(b)), 0600)
+				if err != nil {
+					return fmt.Errorf("write private key failed: %s", err)
+				}
+				c.App.Printf("write private key to: %s\n", c.Flags.String("path"))
+			} else {
+				cmd.Info(hex.EncodeToString(b))
+			}
+			cmd.Warning("Keep your private key safe, the private key is everything!!!")
 			return nil
 		},
 	}
 	parent.AddCommand(s)
 }
 
-
-func (cmd *command) addWalletImport(parent *grumble.Command)  {
+func (cmd *command) addWalletImport(parent *grumble.Command) {
 	s := &grumble.Command{
-		Name: "import",
-		Help: "import keys",
+		Name:     "import",
+		Help:     "import keys",
 		LongHelp: "[<path> (optional, will read from stdin if omitted)]",
 		Flags: func(f *grumble.Flags) {
 			f.String("p", "path", "", "private key file path")
@@ -143,7 +156,7 @@ func (cmd *command) addWalletImport(parent *grumble.Command)  {
 				if err := survey.AskOne(prompt, &input); err != nil {
 					return err
 				}
-			}else {
+			} else {
 				fd, err := ioutil.ReadFile(c.Flags.String("path"))
 				if err != nil {
 					return err
@@ -165,7 +178,7 @@ func (cmd *command) addWalletImport(parent *grumble.Command)  {
 			if err != nil {
 				return err
 			}
-			c.App.Println(addr.String())
+			cmd.Info(fmt.Sprintf("imported key %s successfully!", addr.String()))
 			return nil
 		},
 	}
