@@ -1,8 +1,13 @@
 # Fost
+
 Filecoin simple command line wallet.
 
-> **Warning: Your private key will be stored in memory and will not be sent anywhere.
-Use it at your own risk.**
+**Warning:** 
+
+* Your private key will be stored in memory and will not be sent anywhere.
+* When exiting the fost interactive mode, **ALL DATA** will be deleted, including the private key.
+
+**Use it at your own risk!** ☠️
 
 ## Dependencies
 
@@ -43,31 +48,31 @@ make
 
 ![help](assets/help.png)
 
-**create new key**
+### create new key
 > Warning: When creating a key in interactive mode, you must export the private key before using it.
 
 ![new key](assets/new-key.png)
 
-**import keys**
+### import keys
 > Your private key will only be stored in local memory.
 
 ![import key](assets/import-key.png)
 
-**export keys**
+### export keys
 > Export the private key to a file
 
 ![export key](assets/export-key.png)
 
-**list keys**
+### list keys
 
 ![wallet-list](assets/wallet-list.png)
 
-**send funds between accounts**
+### send funds between accounts
 > Send funds to an account and return the transaction ID
 
 ![send](assets/send.png)
 
-**Send funds between multiple accounts**
+### Send funds between multiple accounts
 
 Use csv file
 
