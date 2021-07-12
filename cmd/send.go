@@ -21,7 +21,7 @@ import (
 func (cmd *command) initSend() {
 	walletCommand := &grumble.Command{
 		Name:     "send",
-		Help:     "Send funds between accounts (Just sign the transaction, not really send)",
+		Help:     "Send funds between accounts",
 		LongHelp: "[targetAddress] [amount]",
 		Args: func(a *grumble.Args) {
 			a.String("targetAddress", "specify targetAddress to send")

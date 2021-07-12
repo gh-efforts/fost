@@ -77,7 +77,6 @@ func (cmd *command) initLogo() {
 	cmd.app.SetPrintASCIILogo(func(a *grumble.App) {
 		f1 := figure.NewFigure("FOST", "", true)
 		f1.Print()
-		a.Println(a.Config().Description)
 	})
 }
 

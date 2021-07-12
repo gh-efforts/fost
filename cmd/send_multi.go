@@ -19,12 +19,12 @@ import (
 func (cmd *command) initSendMulti() {
 	sendMultiCommand := &grumble.Command{
 		Name: "send-multi",
-		Help: "Send funds between accounts (Only available in online mode)",
+		Help: "Send funds between multiple accounts (Only available in online mode)",
 		LongHelp: `
 [targetData] example:
-	address1:value1
-	address2:value2
-	address3:value3
+	address1,value1
+	address2,value2
+	address3,value3
 `,
 		Args: func(a *grumble.Args) {
 			a.String("path", "specify targetData file path to send")
