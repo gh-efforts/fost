@@ -7,3 +7,9 @@ default:  binary;
 
 binary:
 	go build $(GOFLAGS)
+
+
+$(MODULES): build/.update-modules ;
+build/.update-modules:
+	git submodule update --init --recursive
+	touch $@
