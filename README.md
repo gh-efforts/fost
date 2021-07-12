@@ -19,7 +19,7 @@ Fost is built on top of [Lotus](https://github.com/filecoin-project/lotus), you 
 ## Build
 
 ```shell
-git clone https://github.com/strahe/fost.git
+git clone https://github.com/byteark-project/fost.git
 cd fost
 make
 ```
