@@ -1,2 +1,2 @@
 # fost
-Filecoin offline signature tool.
+Filecoin simple command line wallet.

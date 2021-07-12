@@ -17,12 +17,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"reflect"
 )
 
 var (
 	ErrWalletEmpty = fmt.Errorf("wallet is empty")
+	log            = logging.Logger("cmd")
 )
 
 type command struct {
@@ -41,7 +43,7 @@ func newCommand() (c *command, err error) {
 	c = &command{
 		app: grumble.New(&grumble.Config{
 			Name:                  "fost",
-			Description:           "Filecoin offline signature tool!",
+			Description:           "Filecoin simple command line wallet!",
 			Prompt:                "fost » ",
 			PromptColor:           color.New(color.FgGreen, color.Bold),
 			HelpHeadlineColor:     color.New(color.FgGreen),
@@ -66,6 +68,7 @@ func newCommand() (c *command, err error) {
 	c.initSign()
 	c.initVerify()
 	c.initConfig()
+	c.initSendMulti()
 
 	return c, nil
 }
@@ -144,6 +147,16 @@ func (cmd *command) SetOffline(ctx context.Context, o bool) {
 		}
 	} else {
 		cmd.apiGetter = nil
+	}
+}
+
+func (cmd *command) IsOffline() bool {
+	if cmd.apiGetter == nil {
+		return true
+	} else if cmd.config.Offline {
+		return true
+	} else {
+		return false
 	}
 }
 

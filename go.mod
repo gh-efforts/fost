@@ -12,8 +12,10 @@ require (
 	github.com/filecoin-project/go-state-types v0.1.1-0.20210506134452-99b279731c48
 	github.com/filecoin-project/lotus v1.10.1
 	github.com/filecoin-project/specs-actors v0.9.13
+	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-log/v2 v2.2.0 // indirect
 	github.com/multiformats/go-multihash v0.0.15 // indirect
+	github.com/olekukonko/tablewriter v0.0.0-20170122224234-a0225b3f23b5
 	github.com/whyrusleeping/cbor-gen v0.0.0-20210422071115-ad5b82622e0f
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e // indirect
 	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c // indirect

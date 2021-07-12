@@ -13,6 +13,7 @@ import (
 	lotusApi "github.com/filecoin-project/lotus/api"
 	lotusTypes "github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 	"strings"
 )
@@ -140,10 +141,6 @@ func (cmd *command) initSend() {
 				return err
 			}
 			cmd.Info(string(v))
-
-			if msg.GasFeeCap.IsZero() || msg.GasPremium.IsZero() || msg.GasLimit == 0 || msg.Nonce == 0 {
-				cmd.Warning("In offline mode, you must manually set gas-premium, gas-feecap, gas-limit, nonce !!!")
-			}
 			var confirm bool
 			prompt := &survey.Confirm{
 				Message: "confirm signature ?:",
@@ -153,31 +150,13 @@ func (cmd *command) initSend() {
 			}
 
 			if confirm {
-				sm, err := cmd.signMsg(ctx, msg)
+				id, err := cmd.sendMsg(ctx, msg)
 				if err != nil {
 					return err
 				}
-
-				sigBytes := append([]byte{byte(sm.Signature.Type)}, sm.Signature.Data...)
-				cmd.Info(hex.EncodeToString(sigBytes))
-
-				smg, err := sm.MarshalJSON()
-				if err != nil {
-					return fmt.Errorf("error serializing message: %w", err)
+				if id != cid.Undef {
+					cmd.Info(id.String())
 				}
-
-				cmd.Info("Push to Network: ")
-				curlData := `
-=================================================================================================
-curl -X POST \
--H "Content-Type: application/json" \
---data '{ "jsonrpc": "2.0", "method": "Filecoin.MpoolPush", "params": [$paramsData], "id": 1 }' \
-'$rpcAddr'
-=================================================================================================
-`
-				curlData = strings.Replace(curlData, "$paramsData", string(smg), 1)
-				curlData = strings.Replace(curlData, "$rpcAddr", cmd.config.Rpc, 1)
-				cmd.Info(curlData)
 			}
 			return nil
 		},
@@ -227,7 +206,7 @@ func (cmd *command) buildMsg(ctx context.Context, params SendParams) (*lotusType
 		msg.Nonce = *params.Nonce
 	}
 
-	if cmd.apiGetter != nil {
+	if !cmd.IsOffline() {
 		oApi, closer, err := cmd.apiGetter()
 		if err != nil {
 			return nil, err
@@ -238,14 +217,10 @@ func (cmd *command) buildMsg(ctx context.Context, params SendParams) (*lotusType
 		if err != nil {
 			return nil, xerrors.Errorf("GasEstimateMessageGas error: %w", err)
 		}
-		msg.Nonce, err = oApi.MpoolGetNonce(ctx, msg.From)
-		if err != nil {
-			return nil, err
+	} else {
+		if msg.GasFeeCap.IsZero() || msg.GasPremium.IsZero() || msg.GasLimit == 0 {
+			return nil, xerrors.Errorf("in offline mode, you must manually set gas-premium, gas-feecap, gas-limit, nonce !!!")
 		}
-	}
-
-	if params.Nonce != nil {
-		msg.Nonce = *params.Nonce
 	}
 
 	return msg, nil
@@ -269,4 +244,53 @@ func (cmd *command) signMsg(ctx context.Context, msg *lotusTypes.Message) (*lotu
 		Message:   *msg,
 		Signature: *sig,
 	}, nil
+}
+
+func (cmd *command) sendMsg(ctx context.Context, msg *lotusTypes.Message) (cid.Cid, error) {
+	if cmd.IsOffline() {
+		if msg.Nonce == 0 {
+			return cid.Cid{}, fmt.Errorf("in offline mode, the nonce must be specified")
+		}
+
+		sm, err := cmd.signMsg(ctx, msg)
+		if err != nil {
+			return cid.Cid{}, err
+		}
+
+		smg, err := sm.MarshalJSON()
+		if err != nil {
+			return cid.Cid{}, fmt.Errorf("error serializing message: %w", err)
+		}
+
+		cmd.Warning("In offline mode, you must manually send to the network: ")
+		curlData := `
+=================================================================================================
+curl -X POST \
+-H "Content-Type: application/json" \
+--data '{ "jsonrpc": "2.0", "method": "Filecoin.MpoolPush", "params": [$paramsData], "id": 1 }' \
+'$rpcAddr'
+=================================================================================================
+`
+		curlData = strings.Replace(curlData, "$paramsData", string(smg), 1)
+		curlData = strings.Replace(curlData, "$rpcAddr", cmd.config.Rpc, 1)
+		cmd.Info(curlData)
+		return cid.Cid{}, nil
+
+	} else {
+		oApi, closer, err := cmd.apiGetter()
+		if err != nil {
+			return cid.Cid{}, err
+		}
+		defer closer()
+		msg.Nonce, err = oApi.MpoolGetNonce(ctx, msg.From)
+		if err != nil {
+			return cid.Cid{}, err
+		}
+
+		sm, err := cmd.signMsg(ctx, msg)
+		if err != nil {
+			return cid.Cid{}, err
+		}
+		return oApi.MpoolPush(ctx, sm)
+	}
 }
