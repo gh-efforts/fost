@@ -141,10 +141,10 @@ func (cmd *command) initSendMulti() {
 			table := tablewriter.NewWriter(c.App.Stdout())
 			table.SetHeader([]string{"To", "Value", "Max Fees", "Max Total Cost"})
 
-			for targetAddress, value := range am {
+			for _, sv := range am {
 				params := params
-				params.To = targetAddress
-				params.Value = value
+				params.To = sv.to
+				params.Value = sv.value
 				msg, err := cmd.buildMsg(ctx, params)
 				if err != nil {
 					return err
@@ -197,7 +197,12 @@ func (cmd *command) initSendMulti() {
 	cmd.app.AddCommand(sendMultiCommand)
 }
 
-func readSendMultiFile(path string) (map[address.Address]abi.TokenAmount, error) {
+type sendValue struct {
+	to    address.Address
+	value abi.TokenAmount
+}
+
+func readSendMultiFile(path string) ([]sendValue, error) {
 	file, err := os.Open(path)
 
 	if err != nil {
@@ -217,7 +222,7 @@ func readSendMultiFile(path string) (map[address.Address]abi.TokenAmount, error)
 		return nil, err
 	}
 
-	var resp = map[address.Address]abi.TokenAmount{}
+	var resp []sendValue
 
 	for _, line := range lines {
 		sp := strings.Split(line, ",")
@@ -235,7 +240,10 @@ func readSendMultiFile(path string) (map[address.Address]abi.TokenAmount, error)
 			return nil, fmt.Errorf("failed to parse amount: %w", err)
 		}
 
-		resp[targetAddress] = abi.TokenAmount(val)
+		resp = append(resp, sendValue{
+			to:    targetAddress,
+			value: abi.TokenAmount(val),
+		})
 	}
 	return resp, nil
 }
