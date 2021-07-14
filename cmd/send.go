@@ -143,7 +143,7 @@ func (cmd *command) initSend() {
 			cmd.Info(string(v))
 			var confirm bool
 			prompt := &survey.Confirm{
-				Message: "confirm signature ?:",
+				Message: "Confirm to send ?:",
 			}
 			if err := survey.AskOne(prompt, &confirm, nil); err != nil {
 				return err

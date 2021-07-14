@@ -147,7 +147,7 @@ message details:
         "/": "bafy2bzacedoivyr73osrgujebqdmgjpbojufk7grzh33mbv6ba63g7imbwqpg"
     }
 }
-? confirm signature ?: Yes
+? Confirm to send ?: Yes
 
 bafy2bzacecpcqjp3r3xbvjlg4n2ptcrajmz37dly6g55xoc636tgks7lj5f7w
 ```
@@ -183,7 +183,7 @@ fost » send-multi /tmp/send-multi.csv
 | f1emfkuifmqnw3u7dtgr3ffihefffbabljwiuikta                                              | 0.7 FIL | 0.00000005480771712 FIL  | 0.70000005480771712 FIL  |
 +----------------------------------------------------------------------------------------+---------+--------------------------+--------------------------+
 
-? confirm to send ?: Yes
+? Confirm to send ?: Yes
 
 +----------------------------------------------------------------------------------------+---------+--------------------------+--------------------------+----------------------------------------------------------------+
 |                                           TO                                           |  VALUE  |         MAX FEES         |      MAX TOTAL COST      |                             TX ID                              |

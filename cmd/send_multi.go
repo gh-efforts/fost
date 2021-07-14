@@ -160,7 +160,7 @@ func (cmd *command) initSendMulti() {
 
 			var confirm bool
 			prompt := &survey.Confirm{
-				Message: "confirm to send ?:",
+				Message: "Confirm to send ?:",
 				Help:    "They will be sent to the network!",
 			}
 			if err := survey.AskOne(prompt, &confirm, nil); err != nil {
