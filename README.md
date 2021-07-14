@@ -4,8 +4,8 @@ Filecoin simple command line wallet.
 
 **Warning:** 
 
-* Your private key will be stored in memory and will not be sent anywhere.
-* When exiting the fost interactive mode, **ALL DATA** will be deleted, including the private key.
+* Your private key will be stored in memory (by default) and will not be sent anywhere.
+* When exiting the fost interactive mode, **ALL DATA** will be deleted, including the private key ((by default)).
 
 **Use it at your own risk!** ☠️
 
@@ -37,6 +37,10 @@ make
 ## Enter offline interactive mode (For professional users)
 
 ./fost --offline
+
+## Use local file system storage
+
+./fost --repo /tmp/mywallet 
 
 ## Specify Lotus RPC (default: https://api.node.glif.io/rpc/v0)
 ## Lotus RPC is only used to query the chain status, your private key will not be sent anywhere.
@@ -111,9 +115,11 @@ Keep your private key safe, the private key is everything!!!
 
 ```shell
 fost » wallet list
-f1kq4ehjgfwxa53pipvsgx6nzzecwbeqld7cb2o4a
-f1uuz34cekngih2hihziofzbkvy7ixpirh6kut5ga
-
++----------------------------------------------------------------------------------------+---------------------------+
+|                                        ADDRESS                                         |          BALANCE          |
++----------------------------------------------------------------------------------------+---------------------------+
+| f3sq65pised2zc35bcj73adaxjxxtapsfjhtdlpykls53pbffme5ui3ozyy74xkaoobluxeeeqvk2o5z4mfrsa | 80.559998008131375095 FIL |
++----------------------------------------------------------------------------------------+---------------------------+
 ```
 
 ### send funds between accounts

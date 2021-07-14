@@ -7,7 +7,10 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/desertbit/grumble"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/lotus/api/v0api"
 	lotusTypes "github.com/filecoin-project/lotus/chain/types"
+	"github.com/olekukonko/tablewriter"
 	"io/ioutil"
 	"strings"
 )
@@ -36,9 +39,30 @@ func (cmd *command) addWalletList(parent *grumble.Command) {
 			if err != nil {
 				return err
 			}
-			for _, addr := range addrs {
-				cmd.Println(addr.String())
+
+			var node v0api.FullNode
+			var closer jsonrpc.ClientCloser
+			if !cmd.IsOffline() {
+				node, closer, err = cmd.apiGetter()
+				if err != nil {
+					return err
+				}
+				defer closer()
 			}
+
+			table := tablewriter.NewWriter(c.App.Stdout())
+			table.SetHeader([]string{"Address", "Balance"})
+			for _, addr := range addrs {
+				var balance string
+				if node != nil {
+					act, err := node.StateGetActor(ctx, addr, lotusTypes.EmptyTSK)
+					if err == nil {
+						balance = lotusTypes.FIL(act.Balance).String()
+					}
+				}
+				table.Append([]string{addr.String(), balance})
+			}
+			table.Render()
 			return nil
 		},
 	}

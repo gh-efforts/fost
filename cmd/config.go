@@ -11,6 +11,7 @@ type Config struct {
 	Offline bool   `json:"offline"`
 	Rpc     string `json:"rpc"`
 	Token   string `json:"token"`
+	Repo    string `json:"repo"`
 }
 
 func (cmd *command) initConfig() {
@@ -65,7 +66,7 @@ func (cmd *command) addConfigSet(parent *grumble.Command) {
 			case "token":
 				cmd.config.Token = value
 			default:
-				cmd.Warning(fmt.Sprintf("unrecognized field: %s", field))
+				cmd.Warning(fmt.Sprintf("unsupported field: %s", field))
 			}
 			return nil
 		},

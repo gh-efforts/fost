@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/node/repo"
 	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"reflect"
@@ -35,11 +36,6 @@ type command struct {
 }
 
 func newCommand() (c *command, err error) {
-	wa, err := wallet.NewWallet(wallet.NewMemKeyStore())
-	if err != nil {
-		return nil, fmt.Errorf("new wallet: %s", err)
-	}
-
 	c = &command{
 		app: grumble.New(&grumble.Config{
 			Name:                  "fost",
@@ -50,13 +46,49 @@ func newCommand() (c *command, err error) {
 			HelpHeadlineUnderline: true,
 			Flags:                 ConfigFlags(),
 		}),
-		wallet: wa,
 		config: &Config{},
 	}
 	c.app.OnInit(func(a *grumble.App, flags grumble.FlagMap) error {
+
 		c.config.Offline = flags.Bool("offline")
 		c.config.Rpc = flags.String("rpc")
 		c.config.Token = flags.String("token")
+		c.config.Repo = flags.String("repo")
+
+		if c.config.Repo == "" {
+			c.wallet, err = wallet.NewWallet(wallet.NewMemKeyStore())
+			if err != nil {
+				return fmt.Errorf("new wallet: %s", err)
+			}
+		} else {
+			r, err := repo.NewFS(c.config.Repo)
+			if err != nil {
+				return err
+			}
+
+			ok, err := r.Exists()
+			if err != nil {
+				return err
+			}
+			if !ok {
+				if err := r.Init(repo.Worker); err != nil {
+					return err
+				}
+			}
+
+			lr, err := r.Lock(repo.Wallet)
+			if err != nil {
+				return err
+			}
+
+			ks, err := lr.KeyStore()
+			if err != nil {
+				return err
+			}
+
+			c.wallet, err = wallet.NewWallet(ks)
+		}
+
 		ctx, _ := a.Context()
 		c.SetOffline(ctx, c.config.Offline)
 		return nil
@@ -164,6 +196,7 @@ func ConfigFlags() func(f *grumble.Flags) {
 		f.Bool("o", "offline", false, "don't query chain state in interactive mode!")
 		f.String("r", "rpc", "https://api.node.glif.io/rpc/v0", "lotus rpc url")
 		f.String("t", "token", "", "rpc token")
+		f.String("d", "repo", "", "wallet repo path (If not specified, use memory storage)")
 	}
 	return v
 }
