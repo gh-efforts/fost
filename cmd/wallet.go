@@ -26,6 +26,7 @@ func (cmd *command) initWallet() {
 	cmd.addWalletNew(walletCommand)
 	cmd.addWalletExport(walletCommand)
 	cmd.addWalletImport(walletCommand)
+	cmd.addWalletRemove(walletCommand)
 }
 
 func (cmd *command) addWalletList(parent *grumble.Command) {
@@ -203,6 +204,48 @@ func (cmd *command) addWalletImport(parent *grumble.Command) {
 				return err
 			}
 			cmd.Info(fmt.Sprintf("imported key %s successfully!", addr.String()))
+			return nil
+		},
+	}
+	parent.AddCommand(s)
+}
+
+func (cmd *command) addWalletRemove(parent *grumble.Command) {
+	s := &grumble.Command{
+		Name: "remove",
+		Help: "remove keys",
+		Run: func(c *grumble.Context) error {
+			ctx, cancel := c.App.Context()
+			defer cancel()
+			addrs, err := cmd.wallet.WalletList(ctx)
+			if err != nil {
+				return err
+			}
+
+			key := ""
+			prompt := &survey.Select{
+				Message: "Which key do you want to remove? :",
+			}
+			for _, addr := range addrs {
+				prompt.Options = append(prompt.Options, addr.String())
+			}
+
+			if err := survey.AskOne(prompt, &key, nil); err != nil {
+				return err
+			}
+			addr, _ := address.NewFromString(key)
+
+			var confirm bool
+			promptConfirm := &survey.Confirm{
+				Message: "Confirm to remove ?:",
+			}
+			if err := survey.AskOne(promptConfirm, &confirm, nil); err != nil {
+				return err
+			}
+
+			if confirm {
+				return cmd.wallet.WalletDelete(ctx, addr)
+			}
 			return nil
 		},
 	}
