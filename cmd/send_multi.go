@@ -170,7 +170,12 @@ func (cmd *command) initSendMulti() {
 			if confirm {
 				table = tablewriter.NewWriter(c.App.Stdout())
 				table.SetHeader([]string{"To", "Value", "Max Fees", "Max Total Cost", "TX ID"})
-				for _, bm := range buildMsg {
+				nonce, err := cmd.getNonce(ctx, params.From)
+				if err != nil {
+					return err
+				}
+				for idx, bm := range buildMsg {
+					bm.Nonce = nonce + uint64(idx)
 					id, err := cmd.sendMsg(ctx, bm)
 					if err != nil {
 						log.Errorf("send to %s: %s", bm.To.String(), err)
@@ -232,7 +237,7 @@ func readSendMultiFile(path string) ([]sendValue, error) {
 
 		targetAddress, err := address.NewFromString(sp[0])
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse target address: %w", err)
+			return nil, fmt.Errorf("failed to parse target address %s: %w", sp[0], err)
 		}
 
 		val, err := lotusTypes.ParseFIL(sp[1])

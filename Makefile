@@ -9,3 +9,11 @@ build:
 	git submodule update --init --recursive
 	make -C $(FFI_PATH)
 	go build $(GOFLAGS)
+
+clean:
+	rm -rf $(CLEAN) $(BINS)
+	-$(MAKE) -C $(FFI_PATH) clean
+.PHONY: clean
+
+calibnet: GOFLAGS+=-tags=calibnet
+calibnet: build

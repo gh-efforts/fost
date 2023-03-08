@@ -12,9 +12,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/api"
 	lotusApi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/v0api"
-	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -32,7 +32,7 @@ type command struct {
 	app       *grumble.App
 	wallet    lotusApi.Wallet
 	config    *Config
-	apiGetter func() (v0api.FullNode, jsonrpc.ClientCloser, error)
+	apiGetter func() (api.FullNode, jsonrpc.ClientCloser, error)
 }
 
 func newCommand() (c *command, err error) {
@@ -152,7 +152,7 @@ func (cmd *command) DecodeTypedParamsFromJSON(ctx context.Context, to address.Ad
 		return nil, err
 	}
 
-	methodMeta, found := stmgr.MethodsMap[act.Code][method]
+	methodMeta, found := filcns.NewActorRegistry().Methods[act.Code][method]
 	if !found {
 		return nil, fmt.Errorf("method %d not found on actor %s", method, act.Code)
 	}
@@ -173,7 +173,7 @@ func (cmd *command) DecodeTypedParamsFromJSON(ctx context.Context, to address.Ad
 func (cmd *command) SetOffline(ctx context.Context, o bool) {
 	cmd.config.Offline = o
 	if !o {
-		cmd.apiGetter = func() (v0api.FullNode, jsonrpc.ClientCloser, error) {
+		cmd.apiGetter = func() (api.FullNode, jsonrpc.ClientCloser, error) {
 			return util.GetFullNodeAPIUsingCredentials(ctx, cmd.config.Rpc, cmd.config.Token)
 		}
 	} else {

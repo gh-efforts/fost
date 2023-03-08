@@ -8,7 +8,7 @@ import (
 	"github.com/desertbit/grumble"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/api"
 	lotusTypes "github.com/filecoin-project/lotus/chain/types"
 	"github.com/olekukonko/tablewriter"
 	"io/ioutil"
@@ -41,7 +41,7 @@ func (cmd *command) addWalletList(parent *grumble.Command) {
 				return err
 			}
 
-			var node v0api.FullNode
+			var node api.FullNode
 			var closer jsonrpc.ClientCloser
 			if !cmd.IsOffline() {
 				node, closer, err = cmd.apiGetter()
@@ -59,6 +59,8 @@ func (cmd *command) addWalletList(parent *grumble.Command) {
 					act, err := node.StateGetActor(ctx, addr, lotusTypes.EmptyTSK)
 					if err == nil {
 						balance = lotusTypes.FIL(act.Balance).String()
+					} else {
+						log.Errorf("get balance of %s failed: %s", addr, err)
 					}
 				}
 				table.Append([]string{addr.String(), balance})

@@ -254,7 +254,7 @@ func (cmd *command) sendMsg(ctx context.Context, msg *lotusTypes.Message) (cid.C
 
 		sm, err := cmd.signMsg(ctx, msg)
 		if err != nil {
-			return cid.Cid{}, err
+			return cid.Cid{}, fmt.Errorf("signing message: %w", err)
 		}
 
 		smg, err := sm.MarshalJSON()
@@ -282,15 +282,30 @@ curl -X POST \
 			return cid.Cid{}, err
 		}
 		defer closer()
-		msg.Nonce, err = oApi.MpoolGetNonce(ctx, msg.From)
-		if err != nil {
-			return cid.Cid{}, err
+		if msg.Nonce == 0 {
+			msg.Nonce, err = oApi.MpoolGetNonce(ctx, msg.From)
+			if err != nil {
+				return cid.Cid{}, fmt.Errorf("mpool get nonce: %w", err)
+			}
 		}
 
 		sm, err := cmd.signMsg(ctx, msg)
 		if err != nil {
 			return cid.Cid{}, err
 		}
-		return oApi.MpoolPush(ctx, sm)
+		return oApi.MpoolPushUntrusted(ctx, sm)
 	}
+}
+
+func (cmd *command) getNonce(ctx context.Context, addr address.Address) (uint64, error) {
+	oApi, closer, err := cmd.apiGetter()
+	if err != nil {
+		return 0, err
+	}
+	defer closer()
+	nonce, err := oApi.MpoolGetNonce(ctx, addr)
+	if err != nil {
+		return 0, fmt.Errorf("mpool get nonce: %w", err)
+	}
+	return nonce, nil
 }
